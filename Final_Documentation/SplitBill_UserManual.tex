@@ -100,6 +100,12 @@
 \caption{Deployment Diagram of the SplitBill system}
 \centering
 \end{figure}
+
+\paragraph{Design patterns}
+\subparagraph{} In this system the Gang of Four (GOF) observer pattern was used to ensure updates to the currently viewed bill is communicated to all devices while facilitating data hiding. There is a one to many relationship present where the API can communicate with multiple mobile devices, but the mobile devices can only communicate with the API and not any other devices with regards to the application. Updates to the bill on a single device have to be communicated to all active devices. The observer pattern ensures data hiding between all devices. When one mobile device makes changes to the currently active bill, the information is sent to the API, the observer, which is then responsible for communicating these changes to all mobile devices currently active on the bill. Applying the observer pattern ensures there is low coupling and separation of concerns. 
+
+\subparagraph{} Another pattern used is the General Responsibility-Assignment Software Pattern (GRASP) the controller pattern. This pattern ensures that the user interfaces and business objects are independent and as such can change without affecting one another. The application installed on the mobile device is the user interface, this user interface does not handle any business tasks. All requests and changes initiated by the user interface are handled by the API, which means it serves as the controller. Having changes and requests sent to the API for processing before data is sent or retrieved from the OCR module or MongoDB database ensures that the user interface is independent of the business objects. This also allows multiple interfaces to be added without the need for major changes to support new interfaces. Having the controller pattern ensures there is design for change, high cohesion, low coupling and separation of concerns.   
+
        
     \subsection{Installation}
     The installation will be detailed as per module since modules can be swapped out for others with similar functionality if so required. 
@@ -545,11 +551,13 @@ If you claimed an item by mistake and wish to remove it you should navigate to "
 The final amount will be that of the prices of all the items you have claimed, and the amount of gratuity you wish to add. When the user is satisfied with the claimed items, gratuity, and final amount to pay, the user may leave the session. Leaving the session will clear the bill displayed on the device. Once the last person has left the session the session will be terminated. When this occurs, there is no way for the user to retrieve previous bill information.
 
 \section{Using the system}
+\subparagraph{Start-up: }
 Upon start-up of the application the user is prompted for a nickname and a color. These values are stored locally. The user data is only stored in the server when a user joins or creates a session.  
 \subparagraph{}
 Once the user creates a session, a session ID is generated on the server and a new, empty Bill object is created. The bill is added to the database with the session ID. The user is then added to the session. The user is then prompted to take a picture of the bill. This image is then uploaded to the API via a POST request. The API sends the image to the OCR module via a POST request for processing. 
-\subparagraph{}
-The OCR module, as its name indicates, is responsible for optical character recognition of the bill image received from the API. The OCR module first enhances the received image in order to improve the quality of the character recognition output. It thresholds the image to obtain a gray-scale image, reduces noise and aligns the text using the OpenCV software. After character recognition has taken place using the Tesseract software, Levenshtein distance is used to calculate the difference between the word that the OCR recognized and words saved in a provided dictionary. When the distance is low enough, the word is replaced with the word found in the common dictionary. The information of the bill is then extracted according to the specified format. Irrelevant information such as items with empty descriptions, prices of zero or quantities of zero are removed from the and the remaining information is arranged in a JSON string before it is sent to the API. If the OCR is not able to recognize enough or any text the JSON string will contain error information that reflects this. 
+\subparagraph{Image processing and character recognition: }
+The OCR module, as its name indicates, is responsible for optical character recognition of the bill image received from the API. The OCR module first enhances the received image in order to improve the quality of the character recognition output. It thresholds the image to obtain a gray-scale image, reduces noise and aligns the text using the OpenCV software. After character recognition has taken place using the Tesseract software, Levenshtein distance is used to calculate the difference between the word that the OCR recognized and words saved in a provided dictionary. When the distance is low enough, the word is replaced with the word found in the common dictionary.
+\subparagraph{} The information of the bill is then extracted and irrelevant information such as items with empty descriptions, prices of zero or quantities of zero are removed from the JSON string and the remaining information is arranged in a JSON string before it is sent to the API. If the OCR is not able to recognize enough or any text the JSON string will contain error information that reflects this. 
 \hspace{1cm}
 
 If there was sensible text recognized from the image, the object will have the following format:
@@ -558,21 +566,21 @@ If there was sensible text recognized from the image, the object will have the f
 { "type": "success", "attributes": { "data":[ {"id":"1","desc":"description of item 1","price":"xx.xx","quantity":"1"}, {"id":"2","desc":"description of item 2","price":"xx.xx","quantity":"5"}, {"id":"3","desc":"description of item 3","price":"xx.xx","quantity":"3"} ] }, "relationships": { "data":{total":"xx.xx"} } }
 \end{lstlisting}
 
-\subparagraph{}
+\subparagraph{Displaying image information: }
 When the API receives the information from the OCR module, it sends the information in a POST request back to the calling mobile application where the data is then displayed to the user along with the functionalities that accompany it. 
-\subparagraph{}
+\subparagraph{Claiming an item: }
 When the user swipes left on an item, the user is given the option to claim one, or multiple instances of the item. When an item or multiple items are claimed, the price corresponding to the items is added to the running total which can be seen at the bottom of the application screen. When an item is claimed, the quantity of the item available to claim is reduced by the amount that was claimed. When the quantity of an item reaches zero, users will no longer be able to claim items of this type unless a user removes a claim to the item or the item quantity is modified to a quantity larger than zero. 
-\subparagraph{}
+\subparagraph{Editing an item: }
 If the user swipes left on an item, they are presented with a menu in which they can alter the items price, description or quantity. This is useful for when the image was of inferior quality and character recognition was not 100\% accurate. 
-\subparagraph{}
+\subparagraph{Adding an item: }
 The user also has the option to add items to the current bill. An additional item will need a description, price and quantity and will be displayed to all active users. 
-\subparagraph{}
+\subparagraph{Editing current claimed items: }
 The “My Items” menu displays the items that the current user has already claimed. In this menu the user can swipe left on a selected item to increase or decrease the amount of the items claimed, or remove the item from their claimed items. Changes to quantities in this menu can also be observed in the main bill information screen and the running total for the user. 
-\subparagraph{}
+\subparagraph{Observing the total and adjusting gratuity: }
 At the bottom of the main screen, the total price of the claimed items along with a gratuity option is displayed. The gratuity has a default value of 10\% of your bill, but can be modified to be less or more, and is added to your running total accordingly.
-\subparagraph{}
+\subparagraph{Adding users to the bill session: }
 The application has the functionality to add additional users to the same bill session. When the bill session is started the session ID and bill information is stored in the database. An additional user can be added to the session by inputting the generated session ID into his/her own mobile device. When the session ID is sent to the API via a POST request, the API retrieves the bill information of the corresponding session ID stored in the database. The bill information is then sent to the mobile application for display and interaction. The API will now be responsible for the live communication of item changes between each device. As an item is either created, edited or claimed, the device performing the action emits the action to the API, which in turn emits the update to all connected devices.  
-\subparagraph{}
+\subparagraph{Leaving a session: }
 When the user is satisfied with their claimed items, gratuity and final total, the user can leave the session. Once a user selects the option to leave a session, the API is updated and removes the user from the session in the database. Once all users have left, the session is terminated. There is no persistent data storage for a session that has been concluded.
 
 
